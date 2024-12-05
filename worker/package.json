@@ -10,6 +10,7 @@
 		"format:fix": "npx prettier **/* --write",
 		"lint:check": "eslint .",
 		"lint:fix": "eslint . --fix",
+		"tsc": "npx tsc",
 		"test": "vitest",
 		"cf-typegen": "wrangler types"
 	},
