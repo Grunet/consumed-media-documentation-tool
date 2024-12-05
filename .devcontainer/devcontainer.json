@@ -1,0 +1,21 @@
+{
+    "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+    "customizations": {
+      "vscode": {
+        "extensions": [
+          "esbenp.prettier-vscode"
+        ],
+        "settings": {
+          "editor.formatOnSave": true,
+          "[typescript]": {
+            "editor.defaultFormatter": "esbenp.prettier-vscode"
+          },
+          "[json]": {
+            "editor.defaultFormatter": "esbenp.prettier-vscode"
+          },
+          "prettier.requireConfig": true
+        }
+      }
+    },
+    "postCreateCommand": "cd ./worker && npm ci" 
+  }
