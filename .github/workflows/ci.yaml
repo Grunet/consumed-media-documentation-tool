@@ -1,0 +1,20 @@
+name: CI
+on: [push]
+jobs:
+  ci:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: ./worker
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+          node-version: 22
+          cache: "npm"
+          cache-dependency-path: './worker/package-lock.json'
+
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run lint:check
+      - run: npm run tsc
+      - run: npm test
