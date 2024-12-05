@@ -1,9 +1,15 @@
 {
     "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+    "features": {
+      "ghcr.io/devcontainers/features/node:1": {
+        "version": "22"
+      }
+    },
     "customizations": {
       "vscode": {
         "extensions": [
-          "esbenp.prettier-vscode"
+          "esbenp.prettier-vscode",
+          "dbaeumer.vscode-eslint"
         ],
         "settings": {
           "editor.formatOnSave": true,
@@ -13,7 +19,11 @@
           "[json]": {
             "editor.defaultFormatter": "esbenp.prettier-vscode"
           },
-          "prettier.requireConfig": true
+          "[jsonc]": {
+            "editor.defaultFormatter": "esbenp.prettier-vscode"
+          },
+          "prettier.requireConfig": true,
+          "eslint.validate": ["javascript", "typescript"]
         }
       }
     },
