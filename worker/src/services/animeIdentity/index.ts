@@ -1,13 +1,20 @@
+import { IDatabaseAdapter } from '../../dependencies/database/database';
+
 interface IAnimeIdentityService {
-	getAnimeInternalIdFromAnilistId({ anilistId }: { anilistId: number }): { animeInternalId: number };
+	getAnimeInternalIdFromAnilistId({ anilistId }: { anilistId: number }): Promise<{ animeInternalId: number }>;
 }
 
-function createAnimeIdentityService(): IAnimeIdentityService {
+function createAnimeIdentityService({ dbAdapter }: { dbAdapter: IDatabaseAdapter }): IAnimeIdentityService {
 	return {
-		getAnimeInternalIdFromAnilistId({ anilistId }) {
+		async getAnimeInternalIdFromAnilistId({ anilistId }) {
 			// TODO - actually do the lookup or creation
 
-			// Check D1 to see if it's already there, return the internal id if so
+			const res = await dbAdapter.run('SELECT InternalId FROM AnimeIdentity_Anime WHERE AnilistId = ?', anilistId);
+			if (res.length > 0 && typeof res[0]['InternalId'] === 'number') {
+				return {
+					animeInternalId: res[0]['InternalId'],
+				};
+			}
 
 			// Hit the anilist API to see if the id is valid there
 			//   If it's not, return an error or throw an exception (maybe functional try catch) of some sort
