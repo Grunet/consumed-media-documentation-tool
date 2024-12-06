@@ -7,8 +7,6 @@ interface IAnimeIdentityService {
 function createAnimeIdentityService({ dbAdapter }: { dbAdapter: IDatabaseAdapter }): IAnimeIdentityService {
 	return {
 		async getAnimeInternalIdFromAnilistId({ anilistId }) {
-			// TODO - actually do the lookup or creation
-
 			const res = await dbAdapter.run('SELECT InternalId FROM AnimeIdentity_Anime WHERE AnilistId = ?', anilistId);
 			if (res.length > 0 && typeof res[0]['InternalId'] === 'number') {
 				return {
@@ -16,19 +14,30 @@ function createAnimeIdentityService({ dbAdapter }: { dbAdapter: IDatabaseAdapter
 				};
 			}
 
-			// Hit the anilist API to see if the id is valid there
-			//   If it's not, return an error or throw an exception (maybe functional try catch) of some sort
-			//   If it is, create a new record in D1, and return the internal id you get
+			const anilistIdIsValid = await checkIfAnilistIdIsValid({ anilistId });
+			if (!anilistIdIsValid) {
+				throw new Error(`Invalid Anilist id: ${anilistId}`);
+			}
 
-			// Add overall exception handling
+			// If this method is hit twice in quick succession, this line might run twice
+			// The DB should be enforcing a unique constraint on AnilistId that will cause one of the inserts to error
+			await dbAdapter.run(`INSERT INTO AnimeIdentity_Anime (AnilistId) VALUES ( ? )`, anilistId);
 
-			const animeInternalId = anilistId;
+			const res2 = await dbAdapter.run('SELECT InternalId FROM AnimeIdentity_Anime WHERE AnilistId = ?', anilistId);
+			if (res2.length > 0 && typeof res2[0]['InternalId'] === 'number') {
+				return {
+					animeInternalId: res2[0]['InternalId'],
+				};
+			}
 
-			return {
-				animeInternalId,
-			};
+			throw new Error(`Unable to retrieve internal id for anilist id of ${anilistId}`);
 		},
 	};
+}
+
+async function checkIfAnilistIdIsValid({ anilistId }: { anilistId: number }) {
+	// TODO - actually implement this
+	return Promise.resolve(true);
 }
 
 export { createAnimeIdentityService };
