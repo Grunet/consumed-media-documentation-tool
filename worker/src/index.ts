@@ -11,7 +11,7 @@ function createServiceRegistry({ env }: { env: Bindings }) {
 
 	return createServiceRegistryInternal({
 		services: {
-			animeIdentityService: createAnimeIdentityService({ dbAdapter }),
+			animeIdentityService: createAnimeIdentityService({ dbAdapter, anilistApiUrl: env.ANILIST_API_URL }),
 		},
 	});
 }

@@ -24,6 +24,7 @@ enabled = true
 # - https://developers.cloudflare.com/workers/configuration/secrets/
 [vars]
 DB_BINDING_NAME = "THE_LOCAL_DB"
+ANILIST_API_URL = "https://graphql.anilist.co"
 
 # Bind the Workers AI model catalog. Run machine learning models, powered by serverless GPUs, on Cloudflare’s global network
 # Docs: https://developers.cloudflare.com/workers/wrangler/configuration/#workers-ai
