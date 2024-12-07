@@ -13,72 +13,80 @@ function createAnimeIdentityService({
 }): IAnimeIdentityService {
 	return {
 		async getAnimeInternalIdFromAnilistId({ anilistId }) {
-			if (!Number.isInteger(anilistId) || anilistId <= 0) {
-				return new Response(JSON.stringify({ errorMessage: `Anilist id of ${anilistId} is either not an integer or is not positive` }), {
-					status: 400,
-					headers: { 'Content-Type': 'application/json' },
-				});
-			}
-
-			const res = await dbAdapter.run('SELECT InternalId FROM AnimeIdentity_Anime WHERE AnilistId = ?', anilistId);
-			if (res.length > 0 && typeof res[0]['InternalId'] === 'number') {
-				return new Response(
-					JSON.stringify({
-						data: {
-							animeInternalId: res[0]['InternalId'],
-						},
-					}),
-					{
-						status: 200,
-						headers: { 'Content-Type': 'application/json' },
-					},
-				);
-			}
-
-			const { status } = await checkIfAnilistIdIsValid({ anilistApiUrl, anilistId });
-			// TODO - emit the status and errorMessage property in the return value into telemetry
-			if (status != 200) {
-				if (status === 404) {
-					return new Response(JSON.stringify({ errorMessage: `Not Found` }), {
-						status: 404,
-						headers: { 'Content-Type': 'application/json' },
-					});
-				} else if (status === 408) {
-					return new Response(JSON.stringify({ errorMessage: `Request Timeout` }), {
-						status: 408,
-						headers: { 'Content-Type': 'application/json' },
-					});
-				} else {
-					return new Response(JSON.stringify({ errorMessage: `Internal Server Error` }), {
-						status: 500,
+			try {
+				if (!Number.isInteger(anilistId) || anilistId <= 0) {
+					return new Response(JSON.stringify({ errorMessage: `Anilist id of ${anilistId} is either not an integer or is not positive` }), {
+						status: 400,
 						headers: { 'Content-Type': 'application/json' },
 					});
 				}
-			}
 
-			// If this method is hit twice in quick succession, this line might run twice
-			// The DB should be enforcing a unique constraint on AnilistId that will cause one of the inserts to error
-			await dbAdapter.run(`INSERT INTO AnimeIdentity_Anime (AnilistId) VALUES ( ? )`, anilistId);
-
-			const res2 = await dbAdapter.run('SELECT InternalId FROM AnimeIdentity_Anime WHERE AnilistId = ?', anilistId);
-			if (res2.length > 0 && typeof res2[0]['InternalId'] === 'number') {
-				return new Response(
-					JSON.stringify({
-						data: {
-							animeInternalId: res2[0]['InternalId'],
+				const res = await dbAdapter.run('SELECT InternalId FROM AnimeIdentity_Anime WHERE AnilistId = ?', anilistId);
+				if (res.length > 0 && typeof res[0]['InternalId'] === 'number') {
+					return new Response(
+						JSON.stringify({
+							data: {
+								animeInternalId: res[0]['InternalId'],
+							},
+						}),
+						{
+							status: 200,
+							headers: { 'Content-Type': 'application/json' },
 						},
-					}),
-					{
-						status: 200,
-						headers: { 'Content-Type': 'application/json' },
-					},
-				);
-			}
+					);
+				}
 
-			return new Response(JSON.stringify({ errorMessage: `Unable to retrieve internal id for anilist id of ${anilistId}` }), {
-				status: 500,
-				headers: { 'Content-Type': 'application/json' },
-			});
+				const { status } = await checkIfAnilistIdIsValid({ anilistApiUrl, anilistId });
+				// TODO - emit the status and errorMessage property in the return value into telemetry
+				if (status != 200) {
+					if (status === 404) {
+						return new Response(JSON.stringify({ errorMessage: `Not Found` }), {
+							status: 404,
+							headers: { 'Content-Type': 'application/json' },
+						});
+					} else if (status === 408) {
+						return new Response(JSON.stringify({ errorMessage: `Request Timeout` }), {
+							status: 408,
+							headers: { 'Content-Type': 'application/json' },
+						});
+					} else {
+						return new Response(JSON.stringify({ errorMessage: `Internal Server Error` }), {
+							status: 500,
+							headers: { 'Content-Type': 'application/json' },
+						});
+					}
+				}
+
+				// If this method is hit twice in quick succession, this line might run twice
+				// The DB should be enforcing a unique constraint on AnilistId that will cause one of the inserts to error
+				await dbAdapter.run(`INSERT INTO AnimeIdentity_Anime (AnilistId) VALUES ( ? )`, anilistId);
+
+				const res2 = await dbAdapter.run('SELECT InternalId FROM AnimeIdentity_Anime WHERE AnilistId = ?', anilistId);
+				if (res2.length > 0 && typeof res2[0]['InternalId'] === 'number') {
+					return new Response(
+						JSON.stringify({
+							data: {
+								animeInternalId: res2[0]['InternalId'],
+							},
+						}),
+						{
+							status: 200,
+							headers: { 'Content-Type': 'application/json' },
+						},
+					);
+				}
+
+				return new Response(JSON.stringify({ errorMessage: `Unable to retrieve internal id for anilist id of ${anilistId}` }), {
+					status: 500,
+					headers: { 'Content-Type': 'application/json' },
+				});
+			} catch {
+				//TODO - emit the error into telemetry
+				return new Response(JSON.stringify({ errorMessage: `Internal Server Error` }), {
+					status: 500,
+					headers: { 'Content-Type': 'application/json' },
+				});
+			}
 		},
 	};
 }
