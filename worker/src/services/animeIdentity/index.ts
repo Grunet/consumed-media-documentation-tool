@@ -13,6 +13,10 @@ function createAnimeIdentityService({
 }): IAnimeIdentityService {
 	return {
 		async getAnimeInternalIdFromAnilistId({ anilistId }) {
+			if (!Number.isInteger(anilistId) || anilistId <= 0) {
+				throw new Error(`Anilist id of ${anilistId} is either not an integer or is not positive`);
+			}
+
 			const res = await dbAdapter.run('SELECT InternalId FROM AnimeIdentity_Anime WHERE AnilistId = ?', anilistId);
 			if (res.length > 0 && typeof res[0]['InternalId'] === 'number') {
 				return {
@@ -74,7 +78,7 @@ async function checkIfAnilistIdIsValid({ anilistApiUrl, anilistId }: { anilistAp
 			throw new Error(`HTTP Error: ${response.status} ${response.statusText}`);
 		}
 
-		const responseBody = await response.json<{ data: { Media: { id: number }}; errors: [{ status: number }] }>();
+		const responseBody = await response.json<{ data: { Media: { id: number } }; errors: [{ status: number }] }>();
 
 		if (!responseBody || (!responseBody.data && !responseBody.errors)) {
 			throw new Error('Invalid GraphQL response structure.');
