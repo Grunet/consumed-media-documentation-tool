@@ -22,9 +22,19 @@ app.get('/anime/random', async (c) => {
 	//TODO - actually implement this
 	const randomAnilistId = 170942;
 
-	const { animeInternalId } = await createServiceRegistry({ env: c.env })
+	const res = await createServiceRegistry({ env: c.env })
 		.getAnimeIdentityService()
 		.getAnimeInternalIdFromAnilistId({ anilistId: randomAnilistId });
+
+	//TODO - implement handling for when res has a status of 4xx or 5xx
+
+	const json = await res.json();
+
+	//TODO - implement handling for when the json data comes back in an unexpected form
+
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const animeInternalId = (json as any).data.animeInternalId;
+
 	return c.redirect(`/anime/${animeInternalId}`);
 });
 
