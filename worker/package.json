@@ -4,6 +4,7 @@
 	"private": true,
 	"scripts": {
 		"deploy": "wrangler deploy",
+		"db-local:migrate": "wrangler d1 migrations apply local-test-database --local",
 		"dev": "wrangler dev",
 		"start": "wrangler dev",
 		"format:check": "npx prettier **/* --check",

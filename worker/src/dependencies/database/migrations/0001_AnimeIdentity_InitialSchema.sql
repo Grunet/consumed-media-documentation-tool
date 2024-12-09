@@ -1,4 +1,4 @@
-DROP TABLE IF EXISTS AnimeIdentity_Anime;
+-- Migration number: 0001 	 2024-12-09T04:30:47.232Z
 CREATE TABLE IF NOT EXISTS AnimeIdentity_Anime (
     InternalId INTEGER PRIMARY KEY AUTOINCREMENT, 
     AnilistId INTEGER UNIQUE
