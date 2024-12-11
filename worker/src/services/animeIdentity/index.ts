@@ -21,12 +21,12 @@ function createAnimeIdentityService({
 					});
 				}
 
-				const res = await dbAdapter.run('SELECT InternalId FROM AnimeIdentity_Anime WHERE AnilistId = ?', anilistId);
-				if (res.length > 0 && typeof res[0]['InternalId'] === 'number') {
+				const { animeInternalId } = await getInternalIdFromAnilistId({ dbAdapter, anilistId });
+				if (animeInternalId) {
 					return new Response(
 						JSON.stringify({
 							data: {
-								animeInternalId: res[0]['InternalId'],
+								animeInternalId,
 							},
 						}),
 						{
@@ -61,12 +61,12 @@ function createAnimeIdentityService({
 				// The DB should be enforcing a unique constraint on AnilistId that will cause one of the inserts to error
 				await dbAdapter.run(`INSERT INTO AnimeIdentity_Anime (AnilistId) VALUES ( ? )`, anilistId);
 
-				const res2 = await dbAdapter.run('SELECT InternalId FROM AnimeIdentity_Anime WHERE AnilistId = ?', anilistId);
-				if (res2.length > 0 && typeof res2[0]['InternalId'] === 'number') {
+				const { animeInternalId: animeInternalId2 } = await getInternalIdFromAnilistId({ dbAdapter, anilistId });
+				if (animeInternalId2) {
 					return new Response(
 						JSON.stringify({
 							data: {
-								animeInternalId: res2[0]['InternalId'],
+								animeInternalId: animeInternalId2,
 							},
 						}),
 						{
@@ -89,6 +89,19 @@ function createAnimeIdentityService({
 			}
 		},
 	};
+}
+
+async function getInternalIdFromAnilistId({ dbAdapter, anilistId }: { dbAdapter: IDatabaseAdapter; anilistId: number }) {
+	const res = await dbAdapter.run('SELECT InternalId FROM AnimeIdentity_Anime WHERE AnilistId = ?', anilistId);
+	if (res.length > 0 && typeof res[0]['InternalId'] === 'number') {
+		return {
+			animeInternalId: res[0]['InternalId'],
+		};
+	} else {
+		return {
+			animeInternalId: undefined,
+		};
+	}
 }
 
 async function checkIfAnilistIdIsValid({
