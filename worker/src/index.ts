@@ -7,13 +7,18 @@ import { createDatabaseAdapter } from './dependencies/database/database';
 const app = new Hono<{ Bindings: Bindings }>();
 
 function createServiceRegistry({ env }: { env: Bindings }) {
-	const dbAdapter = createDatabaseAdapter({ env });
-
 	return createServiceRegistryInternal({
 		services: {
-			animeIdentityService: createAnimeIdentityService({ dbAdapter, anilistApiUrl: env.ANILIST_API_URL }),
+			animeIdentityService: _createAnimeIdentityService({ env }),
 		},
 	});
+}
+
+// Exposed for tests
+export function _createAnimeIdentityService({ env }: { env: Bindings }) {
+	const dbAdapter = createDatabaseAdapter({ env });
+
+	return createAnimeIdentityService({ dbAdapter, anilistApiUrl: env.ANILIST_API_URL });
 }
 
 app.get('/', (c) => c.text('Hello Cloudflare Workers!'));
