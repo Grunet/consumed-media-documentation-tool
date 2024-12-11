@@ -15,45 +15,27 @@ function createAnimeIdentityService({
 		async getAnimeInternalIdFromAnilistId({ anilistId }) {
 			try {
 				if (!Number.isInteger(anilistId) || anilistId <= 0) {
-					return new Response(JSON.stringify({ errorMessage: `Anilist id of ${anilistId} is either not an integer or is not positive` }), {
-						status: 400,
-						headers: { 'Content-Type': 'application/json' },
-					});
+					return createResponse(400, { errorMessage: `Anilist id of ${anilistId} is either not an integer or is not positive` });
 				}
 
 				const { animeInternalId } = await getInternalIdFromAnilistId({ dbAdapter, anilistId });
 				if (animeInternalId) {
-					return new Response(
-						JSON.stringify({
-							data: {
-								animeInternalId,
-							},
-						}),
-						{
-							status: 200,
-							headers: { 'Content-Type': 'application/json' },
+					return createResponse(200, {
+						data: {
+							animeInternalId,
 						},
-					);
+					});
 				}
 
 				const { status } = await checkIfAnilistIdIsValid({ anilistApiUrl, anilistId });
 				// TODO - emit the status and errorMessage property in the return value into telemetry
 				if (status != 200) {
 					if (status === 404) {
-						return new Response(JSON.stringify({ errorMessage: `Not Found` }), {
-							status: 404,
-							headers: { 'Content-Type': 'application/json' },
-						});
+						return createResponse(404, { errorMessage: `Not Found` });
 					} else if (status === 408) {
-						return new Response(JSON.stringify({ errorMessage: `Request Timeout` }), {
-							status: 408,
-							headers: { 'Content-Type': 'application/json' },
-						});
+						return createResponse(408, { errorMessage: `Request Timeout` });
 					} else {
-						return new Response(JSON.stringify({ errorMessage: `Internal Server Error` }), {
-							status: 500,
-							headers: { 'Content-Type': 'application/json' },
-						});
+						return createResponse(500, { errorMessage: `Internal Server Error` });
 					}
 				}
 
@@ -63,32 +45,27 @@ function createAnimeIdentityService({
 
 				const { animeInternalId: animeInternalId2 } = await getInternalIdFromAnilistId({ dbAdapter, anilistId });
 				if (animeInternalId2) {
-					return new Response(
-						JSON.stringify({
-							data: {
-								animeInternalId: animeInternalId2,
-							},
-						}),
-						{
-							status: 200,
-							headers: { 'Content-Type': 'application/json' },
+					return createResponse(200, {
+						data: {
+							animeInternalId: animeInternalId2,
 						},
-					);
+					});
 				}
 
-				return new Response(JSON.stringify({ errorMessage: `Unable to retrieve internal id for anilist id of ${anilistId}` }), {
-					status: 500,
-					headers: { 'Content-Type': 'application/json' },
-				});
+				return createResponse(500, { errorMessage: `Unable to retrieve internal id for anilist id of ${anilistId}` });
 			} catch {
 				//TODO - emit the error into telemetry
-				return new Response(JSON.stringify({ errorMessage: `Internal Server Error` }), {
-					status: 500,
-					headers: { 'Content-Type': 'application/json' },
-				});
+				return createResponse(500, { errorMessage: `Internal Server Error` });
 			}
 		},
 	};
+}
+
+function createResponse(status: number, body: { errorMessage: string } | { data: { animeInternalId: number } }) {
+	return new Response(JSON.stringify(body), {
+		status,
+		headers: { 'Content-Type': 'application/json' },
+	});
 }
 
 async function getInternalIdFromAnilistId({ dbAdapter, anilistId }: { dbAdapter: IDatabaseAdapter; anilistId: number }) {
