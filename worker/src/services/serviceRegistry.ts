@@ -1,31 +1,29 @@
-import { IAnimeIdentityService } from "./animeIdentity";
-
+import { IAnimeIdentityService } from './animeIdentity';
 
 interface IServiceRegistry {
-    getAnimeIdentityService(): IAnimeIdentityService; 
+	getAnimeIdentityService(): IAnimeIdentityService;
 }
 
 class ServiceRegistry implements IServiceRegistry {
-    
-    #animeIdentityService: IAnimeIdentityService;
-    
-    constructor({ animeIdentityService }: { animeIdentityService: IAnimeIdentityService}) {
-        this.#animeIdentityService = animeIdentityService;
-    }
+	#animeIdentityService: IAnimeIdentityService;
 
-    getAnimeIdentityService(): IAnimeIdentityService {
-        return this.#animeIdentityService;
-    }
+	constructor({ animeIdentityService }: { animeIdentityService: IAnimeIdentityService }) {
+		this.#animeIdentityService = animeIdentityService;
+	}
+
+	getAnimeIdentityService(): IAnimeIdentityService {
+		return this.#animeIdentityService;
+	}
 }
 
 interface ICreateServiceRegistryInputs {
-    services: {
-        animeIdentityService: IAnimeIdentityService
-    }
+	services: {
+		animeIdentityService: IAnimeIdentityService;
+	};
 }
 
 function createServiceRegistry(inputs: ICreateServiceRegistryInputs): IServiceRegistry {
-    return new ServiceRegistry(inputs.services)
+	return new ServiceRegistry(inputs.services);
 }
 
-export { createServiceRegistry }
+export { createServiceRegistry };
