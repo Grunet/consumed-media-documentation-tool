@@ -1,8 +1,12 @@
 {
     "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
     "features": {
-      "ghcr.io/devcontainers/features/node:1": {
+      "ghcr.io/devcontainers/features/node:1.6.1": {
         "version": "22.12.0"
+      },
+      // Copied from https://github.com/devcontainers/features/tree/main/src/docker-in-docker
+      "ghcr.io/devcontainers/features/docker-in-docker:2.12.0": {
+        "version": "27.3.1-ubuntu24.04u1" // Found by running without a specified version, running docker --version and trying it, then seeing the creation log for that failure which should list the actual available versions
       }
     },
     "customizations": {
