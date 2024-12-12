@@ -41,6 +41,7 @@ function createAnimeIdentityService({
 
 				// If this method is hit twice in quick succession, this line might run twice
 				// The DB should be enforcing a unique constraint on AnilistId that will cause one of the inserts to error
+				// A single retry from the caller should always end up returning the correct value, so this seems OK until proven otherwise
 				await dbAdapter.run(`INSERT INTO AnimeIdentity_Anime (AnilistId) VALUES ( ? )`, anilistId);
 
 				const { animeInternalId: animeInternalId2 } = await getInternalIdFromAnilistId({ dbAdapter, anilistId });
