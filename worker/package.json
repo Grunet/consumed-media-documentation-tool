@@ -13,7 +13,9 @@
 		"lint:fix": "eslint . --fix",
 		"tsc": "npx tsc",
 		"test": "vitest",
-		"cf-typegen": "wrangler types"
+		"cf-typegen": "wrangler types",
+		"otel-viewer:start": "./scripts/start-aspire-dashboard.sh",
+		"otel-viewer:stop": "./scripts/stop-aspire-dashboard.sh"
 	},
 	"devDependencies": {
 		"@cloudflare/vitest-pool-workers": "^0.5.2",
