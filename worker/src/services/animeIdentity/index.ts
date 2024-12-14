@@ -1,4 +1,5 @@
 import { IDatabaseAdapter } from '../../dependencies/database/database';
+import { trace, Span } from '@opentelemetry/api';
 
 interface IAnimeIdentityService {
 	getAnimeInternalIdFromAnilistId({ anilistId }: { anilistId: number }): Promise<Response>;
@@ -11,58 +12,72 @@ function createAnimeIdentityService({
 	dbAdapter: IDatabaseAdapter;
 	anilistApiUrl: string;
 }): IAnimeIdentityService {
+	const tracer = trace.getTracer('anime-identity', '0.0.1');
+
 	return {
 		async getAnimeInternalIdFromAnilistId({ anilistId }) {
-			try {
-				if (!Number.isInteger(anilistId) || anilistId <= 0) {
-					return createResponse(400, { errorMessage: `Anilist id of ${anilistId} is either not an integer or is not positive` });
-				}
-
-				const { animeInternalId } = await getInternalIdFromAnilistId({ dbAdapter, anilistId });
-				if (animeInternalId) {
-					return createResponse(200, {
-						data: {
-							animeInternalId,
-						},
-					});
-				}
-
-				const { status } = await checkIfAnilistIdIsValid({ anilistApiUrl, anilistId });
-				// TODO - emit the status and errorMessage property in the return value into telemetry
-				if (status != 200) {
-					if (status === 404) {
-						return createResponse(404, { errorMessage: `Not Found` });
-					} else if (status === 408) {
-						return createResponse(408, { errorMessage: `Request Timeout` });
-					} else {
-						return createResponse(500, { errorMessage: `Internal Server Error` });
+			return tracer.startActiveSpan('getAnimeInternalIdFromAnilistId', async (span: Span) => {
+				try {
+					if (!Number.isInteger(anilistId) || anilistId <= 0) {
+						return createResponse(400, { errorMessage: `Anilist id of ${anilistId} is either not an integer or is not positive` }, span);
 					}
+
+					const { animeInternalId } = await getInternalIdFromAnilistId({ dbAdapter, anilistId });
+					if (animeInternalId) {
+						return createResponse(
+							200,
+							{
+								data: {
+									animeInternalId,
+								},
+							},
+							span,
+						);
+					}
+
+					const { status } = await checkIfAnilistIdIsValid({ anilistApiUrl, anilistId });
+					// TODO - emit the status and errorMessage property in the return value into telemetry
+					if (status != 200) {
+						if (status === 404) {
+							return createResponse(404, { errorMessage: `Not Found` }, span);
+						} else if (status === 408) {
+							return createResponse(408, { errorMessage: `Request Timeout` }, span);
+						} else {
+							return createResponse(500, { errorMessage: `Internal Server Error` }, span);
+						}
+					}
+
+					// If this method is hit twice in quick succession, this line might run twice
+					// The DB should be enforcing a unique constraint on AnilistId that will cause one of the inserts to error
+					// A single retry from the caller should always end up returning the correct value, so this seems OK until proven otherwise
+					await dbAdapter.run(`INSERT INTO AnimeIdentity_Anime (AnilistId) VALUES ( ? )`, anilistId);
+
+					const { animeInternalId: animeInternalId2 } = await getInternalIdFromAnilistId({ dbAdapter, anilistId });
+					if (animeInternalId2) {
+						return createResponse(
+							200,
+							{
+								data: {
+									animeInternalId: animeInternalId2,
+								},
+							},
+							span,
+						);
+					}
+
+					return createResponse(500, { errorMessage: `Unable to retrieve internal id for anilist id of ${anilistId}` }, span);
+				} catch {
+					//TODO - emit the error into telemetry
+					return createResponse(500, { errorMessage: `Internal Server Error` }, span);
 				}
-
-				// If this method is hit twice in quick succession, this line might run twice
-				// The DB should be enforcing a unique constraint on AnilistId that will cause one of the inserts to error
-				// A single retry from the caller should always end up returning the correct value, so this seems OK until proven otherwise
-				await dbAdapter.run(`INSERT INTO AnimeIdentity_Anime (AnilistId) VALUES ( ? )`, anilistId);
-
-				const { animeInternalId: animeInternalId2 } = await getInternalIdFromAnilistId({ dbAdapter, anilistId });
-				if (animeInternalId2) {
-					return createResponse(200, {
-						data: {
-							animeInternalId: animeInternalId2,
-						},
-					});
-				}
-
-				return createResponse(500, { errorMessage: `Unable to retrieve internal id for anilist id of ${anilistId}` });
-			} catch {
-				//TODO - emit the error into telemetry
-				return createResponse(500, { errorMessage: `Internal Server Error` });
-			}
+			});
 		},
 	};
 }
 
-function createResponse(status: number, body: { errorMessage: string } | { data: { animeInternalId: number } }) {
+function createResponse(status: number, body: { errorMessage: string } | { data: { animeInternalId: number } }, span: Span) {
+	span.end();
+
 	return new Response(JSON.stringify(body), {
 		status,
 		headers: { 'Content-Type': 'application/json' },

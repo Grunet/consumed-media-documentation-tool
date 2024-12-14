@@ -1,5 +1,6 @@
 import { Bindings } from './types/bindings';
 import { Hono } from 'hono';
+import { instrument, ResolveConfigFn } from '@microlabs/otel-cf-workers';
 import { createServiceRegistry as createServiceRegistryInternal } from './services/serviceRegistry';
 import { createAnimeIdentityService } from './services/animeIdentity';
 import { createDatabaseAdapter } from './dependencies/database/database';
@@ -58,4 +59,19 @@ app.get('/auth/anilist/redirect', (c) => {
 	return c.text('Not Implemented');
 });
 
-export default app;
+const handler = {
+	fetch(req: Request, env: { Bindings: Bindings }, ctx: ExecutionContext) {
+		return app.fetch(req, env, ctx);
+	},
+};
+
+const config: ResolveConfigFn = () => {
+	return {
+		exporter: {
+			url: 'http://localhost:4317/',
+		},
+		service: { name: 'consumed-media' },
+	};
+};
+
+export default instrument(handler, config);
