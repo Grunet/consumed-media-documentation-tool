@@ -5,7 +5,8 @@ import { createServiceRegistry as createServiceRegistryInternal } from './servic
 import { createAnimeIdentityService } from './services/animeIdentity';
 import { createDatabaseAdapter } from './dependencies/database/database';
 
-const app = new Hono<{ Bindings: Bindings }>();
+type Env = { Bindings: Bindings };
+const app = new Hono<Env>();
 
 function createServiceRegistry({ env }: { env: Bindings }) {
 	return createServiceRegistryInternal({
@@ -60,7 +61,7 @@ app.get('/auth/anilist/redirect', (c) => {
 });
 
 const handler = {
-	fetch(req: Request, env: { Bindings: Bindings }, ctx: ExecutionContext) {
+	fetch(req: Request, env: Env, ctx: ExecutionContext) {
 		return app.fetch(req, env, ctx);
 	},
 };
