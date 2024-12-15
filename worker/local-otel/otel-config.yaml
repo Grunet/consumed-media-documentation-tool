@@ -1,0 +1,35 @@
+extensions:
+  zpages:
+
+receivers:
+  otlp:
+    protocols:
+      http: # Accept OTLP/JSON over HTTP
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+    timeout: 5s
+
+exporters:
+  # debug:
+  otlp:
+    endpoint: 'aspire-dashboard:18889' # Send OTLP Protobuf to Aspire Dashboard
+    tls:
+      insecure: true
+
+service:
+  extensions: [zpages]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlp] # , debug]
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlp]
+    logs:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlp]

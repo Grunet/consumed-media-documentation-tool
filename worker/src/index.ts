@@ -69,7 +69,7 @@ const handler = {
 const config: ResolveConfigFn = () => {
 	return {
 		exporter: {
-			url: 'http://localhost:4317/',
+			url: 'http://0.0.0.0:4318/v1/traces',
 		},
 		service: { name: 'consumed-media' },
 	};

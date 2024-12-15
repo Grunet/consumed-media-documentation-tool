@@ -14,8 +14,8 @@
 		"tsc": "npx tsc",
 		"test": "vitest",
 		"cf-typegen": "wrangler types",
-		"otel-viewer:start": "./scripts/start-aspire-dashboard.sh",
-		"otel-viewer:stop": "./scripts/stop-aspire-dashboard.sh"
+		"otel-viewer:start": "cd ./local-otel/ && docker-compose up -d",
+		"otel-viewer:stop": "cd ./local-otel/ && docker-compose down"
 	},
 	"devDependencies": {
 		"@cloudflare/vitest-pool-workers": "^0.5.2",
