@@ -14,7 +14,7 @@ processors:
 exporters:
   # debug:
   otlp:
-    endpoint: 'aspire-dashboard:18889' # Send OTLP Protobuf to Aspire Dashboard
+    endpoint: 'aspire-dashboard:18889' # Send OTLP Protobuf to Aspire Dashboard using gRPC
     tls:
       insecure: true
 

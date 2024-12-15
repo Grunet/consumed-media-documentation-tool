@@ -7,7 +7,7 @@ services:
       - "55679:55679" # zPages for troubleshooting
       - "8888:8888" # metrics for troubleshooting
     volumes:
-      - ./otel-config.yaml:/etc/otel-collector-config.yaml
+      - ./otel-config.yaml:/etc/otelcol/config.yaml
 
   aspire-dashboard:
     image: mcr.microsoft.com/dotnet/aspire-dashboard:9.0
