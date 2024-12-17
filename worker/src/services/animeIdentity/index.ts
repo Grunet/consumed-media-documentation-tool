@@ -195,6 +195,7 @@ function createInternalResponse(status: number, errorMessage: string | undefined
 		span.recordException(new Error(errorMessage));
 		span.setStatus({ code: SpanStatusCode.ERROR });
 	}
+	span.end();
 
 	return {
 		status,
