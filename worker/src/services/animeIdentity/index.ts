@@ -150,6 +150,8 @@ async function checkIfAnilistIdIsValid(
 
 			const responseBody = await response.json<{ data: { Media: { id: number } }; errors: [{ status: number }] }>();
 
+			span.setAttribute('custom.http.response.body', JSON.stringify(responseBody));
+
 			if (!responseBody || (!responseBody.data && !responseBody.errors)) {
 				return createInternalResponse(500, 'Invalid Anilist API GraphQL response structure.', span);
 			}
