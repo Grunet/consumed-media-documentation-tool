@@ -116,6 +116,8 @@ async function checkIfAnilistIdIsValid(
 	tracer: Tracer,
 ): Promise<{ status: number; errorMessage?: string }> {
 	return tracer.startActiveSpan('checkIfAnilistIdIsValid', async (span: Span) => {
+		span.setAttribute('custom.anime.anilistId', anilistId);
+
 		const controller = new AbortController();
 		const signal = controller.signal;
 		const timeoutId = setTimeout(() => controller.abort(), 10 * 1000);
