@@ -12,7 +12,7 @@
 		"lint:check": "eslint .",
 		"lint:fix": "eslint . --fix",
 		"tsc": "npx tsc",
-		"test": "vitest",
+		"test": "node ./test/rewriteWorkerEntrypoint.mjs && npx vitest; node ./test/restoreWorkerEntrypoint.mjs",
 		"cf-typegen": "wrangler types",
 		"otel-viewer:start": "cd ./local-otel/ && docker-compose up -d",
 		"otel-viewer:stop": "cd ./local-otel/ && docker-compose down"

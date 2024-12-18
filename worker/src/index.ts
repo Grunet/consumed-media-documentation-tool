@@ -75,4 +75,5 @@ const config: ResolveConfigFn = () => {
 	};
 };
 
+// NOTE: Test code is rewriting this line of code during tests
 export default instrument(handler, config);
