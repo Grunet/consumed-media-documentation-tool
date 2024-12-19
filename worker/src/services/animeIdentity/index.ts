@@ -4,6 +4,7 @@ import { ATTR_HTTP_RESPONSE_STATUS_CODE } from '@opentelemetry/semantic-conventi
 
 interface IAnimeIdentityService {
 	getAnimeInternalIdFromAnilistId({ anilistId }: { anilistId: number }): Promise<Response>;
+	getAnimeCoreDetails({ animeInternalId }: { animeInternalId: number }): Promise<Response>;
 }
 
 function createAnimeIdentityService({
@@ -76,7 +77,74 @@ function createAnimeIdentityService({
 				}
 			});
 		},
+		async getAnimeCoreDetails({ animeInternalId }) {
+			return tracer.startActiveSpan('getAnimeCoreDetails', async (span: Span) => {
+				try {
+					span.setAttribute('custom.anime.animeInternalId', animeInternalId);
+
+					if (!Number.isInteger(animeInternalId) || animeInternalId <= 0) {
+						return createResponse(
+							400,
+							{ errorMessage: `Anime internal id of ${animeInternalId} is either not an integer or is not positive` },
+							span,
+						);
+					}
+
+					const { anilistId } = await getAnilistIdFromInternalId({ dbAdapter, animeInternalId });
+					if (anilistId === undefined) {
+						return createResponse(404, { errorMessage: `No matching anilist id found for anime internal id of ${animeInternalId}` }, span);
+					}
+
+					const { status, data } = await getAnimeDetailsFromAnilist({ anilistApiUrl, anilistId }, tracer);
+					if (status != 200) {
+						if (status === 404) {
+							return createResponse(404, { errorMessage: `Not Found` }, span);
+						} else if (status === 408) {
+							return createResponse(408, { errorMessage: `Request Timeout` }, span);
+						} else {
+							return createResponse(500, { errorMessage: `Internal Server Error` }, span);
+						}
+					}
+
+					if (data) {
+						const name = data.title.english || data.title.userPreferred || data.title.romaji || data.title.native;
+						const imageUrl = data.coverImage.extraLarge;
+
+						return createResponseWithData(
+							200,
+							{
+								data: {
+									name,
+									imageUrl,
+								},
+							},
+							span,
+						);
+					}
+
+					return createResponse(500, { errorMessage: `Unable to retrieve data for anime internal id of ${animeInternalId}` }, span);
+				} catch (error) {
+					span.recordException(error as Error);
+					span.setStatus({ code: SpanStatusCode.ERROR });
+
+					return createResponse(500, { errorMessage: `Internal Server Error` }, span);
+				}
+			});
+		},
 	};
+}
+
+function createResponseWithData(status: number, body: { data: { name: string; imageUrl: string } }, span: Span) {
+	const stringifiedBody = JSON.stringify(body);
+
+	span.setAttribute(ATTR_HTTP_RESPONSE_STATUS_CODE, status);
+	span.setAttribute('custom.http.response.body', stringifiedBody);
+	span.end();
+
+	return new Response(stringifiedBody, {
+		status,
+		headers: { 'Content-Type': 'application/json' },
+	});
 }
 
 function createResponse(status: number, body: { errorMessage: string } | { data: { animeInternalId: number } }, span: Span) {
@@ -101,6 +169,19 @@ async function getInternalIdFromAnilistId({ dbAdapter, anilistId }: { dbAdapter:
 	} else {
 		return {
 			animeInternalId: undefined,
+		};
+	}
+}
+
+async function getAnilistIdFromInternalId({ dbAdapter, animeInternalId }: { dbAdapter: IDatabaseAdapter; animeInternalId: number }) {
+	const res = await dbAdapter.run('SELECT AnilistId FROM AnimeIdentity_Anime WHERE InternalId = ?', animeInternalId);
+	if (res.length > 0 && typeof res[0]['AnilistId'] === 'number') {
+		return {
+			anilistId: res[0]['AnilistId'],
+		};
+	} else {
+		return {
+			anilistId: undefined,
 		};
 	}
 }
@@ -191,6 +272,131 @@ async function checkIfAnilistIdIsValid(
 			}
 		}
 	});
+}
+
+async function getAnimeDetailsFromAnilist(
+	{
+		anilistApiUrl,
+		anilistId,
+	}: {
+		anilistApiUrl: string;
+		anilistId: number;
+	},
+	tracer: Tracer,
+): Promise<{
+	status: number;
+	errorMessage?: string;
+	data?: {
+		id: number;
+		title: { english: string; userPreferred: string; romaji: string; native: string };
+		coverImage: { extraLarge: string };
+	};
+}> {
+	return tracer.startActiveSpan('getAnimeDetailsFromAnilist', async (span: Span) => {
+		span.setAttribute('custom.anime.anilistId', anilistId);
+
+		const controller = new AbortController();
+		const signal = controller.signal;
+		const timeoutId = setTimeout(() => controller.abort(), 10 * 1000);
+
+		try {
+			const response = await fetch(anilistApiUrl, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Accept: 'application/json',
+				},
+				body: JSON.stringify({
+					query: `
+					query ($id: Int) { 
+						Media (id: $id, type: ANIME) {
+							id,
+							title {
+								english,
+								userPreferred,
+								romaji,
+								native
+							},
+							coverImage {
+								extraLarge
+							}
+						}
+					}
+					`,
+					variables: {
+						id: anilistId,
+					},
+				}),
+				signal,
+			});
+
+			clearTimeout(timeoutId);
+
+			if (!response.ok) {
+				return createInternalResponse(response.status, response.statusText, span);
+			}
+
+			const responseBody = await response.json<{
+				data: {
+					Media: {
+						id: number;
+						title: { english: string; userPreferred: string; romaji: string; native: string };
+						coverImage: { extraLarge: string };
+					};
+				};
+				errors: [{ status: number }];
+			}>();
+
+			span.setAttribute('custom.http.response.body', JSON.stringify(responseBody));
+
+			if (!responseBody || (!responseBody.data && !responseBody.errors)) {
+				return createInternalResponse(500, 'Invalid Anilist API GraphQL response structure.', span);
+			}
+
+			if (responseBody.errors) {
+				if (responseBody.errors.find(({ status }) => status >= 400 && status < 500)) {
+					return createInternalResponse(404, `Anilist id of ${anilistId} not found`, span);
+				} else {
+					return createInternalResponse(500, `Anilist API GraphQL errors occurred.: ${JSON.stringify(responseBody.errors)}`, span);
+				}
+			}
+
+			const data = responseBody.data;
+			if (data?.Media?.id !== anilistId) {
+				return createInternalResponse(500, `Sent Anilist id of ${anilistId} but received id of ${JSON.stringify(data.Media.id)}`, span);
+			}
+
+			//TODO - use zod or similar here to validate the data.Media object and get the right types for it
+			return createInternalResponseWithData(200, data.Media, span);
+		} catch (error) {
+			if (signal.aborted) {
+				return createInternalResponse(408, `Anilist API GraphQL request timed out`, span);
+			} else {
+				let errorMessage: string;
+				if (error instanceof Error) {
+					errorMessage = JSON.stringify({
+						name: error.name,
+						message: error.message,
+						stack: error.stack,
+					});
+				} else {
+					errorMessage = JSON.stringify(error);
+				}
+
+				return createInternalResponse(500, errorMessage, span);
+			}
+		}
+	});
+}
+
+function createInternalResponseWithData<T>(status: number, data: T, span: Span) {
+	span.setAttribute(ATTR_HTTP_RESPONSE_STATUS_CODE, status);
+	span.end();
+
+	return {
+		status,
+		data,
+	};
 }
 
 function createInternalResponse(status: number, errorMessage: string | undefined, span: Span) {

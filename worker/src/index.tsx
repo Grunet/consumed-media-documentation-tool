@@ -1,5 +1,7 @@
 import { Bindings } from './types/bindings';
 import { Hono } from 'hono';
+import { jsx } from 'hono/jsx'; // Seems to be required even though it's unused
+
 import { instrument, ResolveConfigFn } from '@microlabs/otel-cf-workers';
 import { createServiceRegistry as createServiceRegistryInternal } from './services/serviceRegistry';
 import { createAnimeIdentityService } from './services/animeIdentity';
@@ -45,9 +47,35 @@ app.get('/anime/random', async (c) => {
 	return c.redirect(`/anime/${animeInternalId}`);
 });
 
-app.get('/anime/:animeId', (c) => {
-	c.status(501);
-	return c.text('Not Implemented');
+app.get('/anime/:animeInternalId', async (c) => {
+	const animeInternalIdAsString = c.req.param('animeInternalId');
+	const animeInternalId = Number(animeInternalIdAsString);
+	if (!Number.isFinite(animeInternalId)) {
+		c.status(400);
+		return c.text('Invalid anime id');
+	}
+
+	const res = await createServiceRegistry({ env: c.env }).getAnimeIdentityService().getAnimeCoreDetails({ animeInternalId });
+
+	const json = await res.json();
+	// TODO - implement handling for when the json data comes back in an unexpected form
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const { name, imageUrl } = (json as any).data as { name: string, imageUrl: string };
+
+	return c.html(
+		<html lang="en">
+			<head>
+				<title>Some title</title>
+				<meta name="description" content="Some description" />
+				<meta charset="UTF-8" />
+				<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+			</head>
+      		<body>
+				{name}
+				{imageUrl}
+			</body>
+		</html>
+	  );
 });
 
 app.post('/user/anime/:animeId', (c) => {
