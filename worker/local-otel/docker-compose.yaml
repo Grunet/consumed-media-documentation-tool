@@ -1,0 +1,21 @@
+services:
+  otel-collector:
+    image: otel/opentelemetry-collector:0.115.1
+    container_name: otel-collector
+    ports:
+      - '4318:4318' # HTTP receiver
+      - '55679:55679' # zPages for troubleshooting
+      - '8888:8888' # metrics for troubleshooting
+    volumes:
+      - ./otel-config.yaml:/etc/otelcol/config.yaml
+
+  aspire-dashboard:
+    image: mcr.microsoft.com/dotnet/aspire-dashboard:9.0
+    container_name: aspire-dashboard
+    ports:
+      - '18888:18888' # web UI
+      - '18889:18889' # receiver
+    environment:
+      - DOTNET_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS=true
+    depends_on:
+      - otel-collector

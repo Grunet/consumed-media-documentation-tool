@@ -1,10 +1,12 @@
 import { Bindings } from './types/bindings';
 import { Hono } from 'hono';
+import { instrument, ResolveConfigFn } from '@microlabs/otel-cf-workers';
 import { createServiceRegistry as createServiceRegistryInternal } from './services/serviceRegistry';
 import { createAnimeIdentityService } from './services/animeIdentity';
 import { createDatabaseAdapter } from './dependencies/database/database';
 
-const app = new Hono<{ Bindings: Bindings }>();
+type Env = { Bindings: Bindings };
+const app = new Hono<Env>();
 
 function createServiceRegistry({ env }: { env: Bindings }) {
 	return createServiceRegistryInternal({
@@ -58,4 +60,20 @@ app.get('/auth/anilist/redirect', (c) => {
 	return c.text('Not Implemented');
 });
 
-export default app;
+const handler = {
+	fetch(req: Request, env: Env, ctx: ExecutionContext) {
+		return app.fetch(req, env, ctx);
+	},
+};
+
+const config: ResolveConfigFn = () => {
+	return {
+		exporter: {
+			url: 'http://0.0.0.0:4318/v1/traces',
+		},
+		service: { name: 'consumed-media' },
+	};
+};
+
+// NOTE: Test code is rewriting this line of code during tests
+export default instrument(handler, config);
