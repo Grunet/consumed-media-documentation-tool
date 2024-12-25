@@ -12,11 +12,9 @@ function createValidationAdapter(): IValidationAdapter {
 }
 
 // Step 1: Define the schema generic
-function buildValidator<TSchema extends StandardSchemaV1, TOutput>(
+function buildValidator<TSchema extends StandardSchemaV1>(
 	// Step 2: Use the generic to accept a schema
 	schema: TSchema,
-	// Step 3: Infer the output type from the generic
-	handler: (data: StandardSchemaV1.InferOutput<TSchema>) => Promise<TOutput>,
 ) {
 	return {
 		async validate(data: unknown) {
@@ -27,7 +25,8 @@ function buildValidator<TSchema extends StandardSchemaV1, TOutput>(
 			if (result.issues) {
 				throw new Error(result.issues[0].message ?? 'Validation failed');
 			}
-			return handler(result.value);
+			// Step 3: Infer the output type from the generic
+			return result.value as StandardSchemaV1.InferOutput<TSchema>;
 		},
 	};
 }

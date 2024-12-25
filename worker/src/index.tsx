@@ -50,7 +50,7 @@ app.get('/anime/random', async (c) => {
 });
 
 app.get('/anime/:animeInternalId', async (c) => {
-	const { validate } = createValidationAdapter().buildValidator(z.coerce.number(), async (data) => data);
+	const { validate } = createValidationAdapter().buildValidator(z.coerce.number());
 	const animeInternalId = await validate(c.req.param('animeInternalId'));
 
 	const res = await createServiceRegistry({ env: c.env }).getAnimeIdentityService().getAnimeCoreDetails({ animeInternalId });

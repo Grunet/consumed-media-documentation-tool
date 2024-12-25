@@ -252,7 +252,7 @@ async function checkIfAnilistIdIsValid(
 					)
 					.optional(),
 			});
-			const { validate } = validationAdapter.buildValidator(schema, (data) => Promise.resolve(data));
+			const { validate } = validationAdapter.buildValidator(schema);
 
 			const untypedResponseBody = await response.json();
 			const responseBody = await validate(untypedResponseBody);
@@ -387,7 +387,7 @@ async function getAnimeDetailsFromAnilist(
 					)
 					.optional(),
 			});
-			const { validate } = validationAdapter.buildValidator(schema, (data) => Promise.resolve(data));
+			const { validate } = validationAdapter.buildValidator(schema);
 
 			const untypedResponseBody = await response.json();
 			const responseBody = await validate(untypedResponseBody);
