@@ -55,9 +55,12 @@ app.get('/anime/:animeInternalId', async (c) => {
 	const res = await createServiceRegistry({ env: c.env }).getAnimeIdentityService().getAnimeCoreDetails({ animeInternalId });
 
 	const json = await res.json();
-	// TODO - implement handling for when the json data comes back in an unexpected form
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const { name, imageUrl } = (json as any).data as { name: string, imageUrl: string };
+	const { data: { name, imageUrl } } = await createValidationAdapter().buildValidator(z.object({
+		data: z.object({
+		  name: z.string(),
+		  imageUrl: z.string(),
+		}),
+	  })).validate(json);
 
 	return c.html(
 		<html lang="en">
