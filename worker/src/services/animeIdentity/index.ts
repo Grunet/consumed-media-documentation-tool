@@ -42,7 +42,7 @@ function createAnimeIdentityService({
 						);
 					}
 
-					const { status } = await checkIfAnilistIdIsValid({ anilistApiUrl, anilistId }, tracer);
+					const { status } = await checkIfAnilistIdIsValid({ validationAdapter, anilistApiUrl, anilistId }, tracer);
 					if (status != 200) {
 						if (status === 404) {
 							return createResponse(404, { errorMessage: `Not Found` }, span);
@@ -191,9 +191,11 @@ async function getAnilistIdFromInternalId({ dbAdapter, animeInternalId }: { dbAd
 
 async function checkIfAnilistIdIsValid(
 	{
+		validationAdapter,
 		anilistApiUrl,
 		anilistId,
 	}: {
+		validationAdapter: IValidationAdapter;
 		anilistApiUrl: string;
 		anilistId: number;
 	},
@@ -234,7 +236,26 @@ async function checkIfAnilistIdIsValid(
 				return createInternalResponse(response.status, response.statusText, span);
 			}
 
-			const responseBody = await response.json<{ data: { Media: { id: number } }; errors: [{ status: number }] }>();
+			const schema = z.object({
+				data: z
+					.object({
+						Media: z.object({
+							id: z.number(),
+						}),
+					})
+					.optional(),
+				errors: z
+					.array(
+						z.object({
+							status: z.number(),
+						}),
+					)
+					.optional(),
+			});
+			const { validate } = validationAdapter.buildValidator(schema, (data) => Promise.resolve(data));
+
+			const untypedResponseBody = await response.json();
+			const responseBody = await validate(untypedResponseBody);
 
 			span.setAttribute('custom.http.response.body', JSON.stringify(responseBody));
 
