@@ -6,7 +6,7 @@ import { instrument, ResolveConfigFn } from '@microlabs/otel-cf-workers';
 import { createServiceRegistry as createServiceRegistryInternal } from './services/serviceRegistry';
 import { createAnimeIdentityService } from './services/animeIdentity';
 import { createDatabaseAdapter } from './dependencies/database/database';
-import { createValidationAdapter } from './dependencies/validation/validation';
+import { createValidationAdapter, z } from './dependencies/validation/validation';
 
 type Env = { Bindings: Bindings };
 const app = new Hono<Env>();
@@ -31,7 +31,7 @@ app.get('/', (c) => c.text('Hello Cloudflare Workers!'));
 
 app.get('/anime/random', async (c) => {
 	//TODO - actually implement this
-	const randomAnilistId = 170942;
+	const randomAnilistId = 123;
 
 	const res = await createServiceRegistry({ env: c.env })
 		.getAnimeIdentityService()
@@ -50,12 +50,8 @@ app.get('/anime/random', async (c) => {
 });
 
 app.get('/anime/:animeInternalId', async (c) => {
-	const animeInternalIdAsString = c.req.param('animeInternalId');
-	const animeInternalId = Number(animeInternalIdAsString);
-	if (!Number.isFinite(animeInternalId)) {
-		c.status(400);
-		return c.text('Invalid anime id');
-	}
+	const { validate } = createValidationAdapter().buildValidator(z.coerce.number(), async (data) => data);
+	const animeInternalId = await validate(c.req.param('animeInternalId'));
 
 	const res = await createServiceRegistry({ env: c.env }).getAnimeIdentityService().getAnimeCoreDetails({ animeInternalId });
 
