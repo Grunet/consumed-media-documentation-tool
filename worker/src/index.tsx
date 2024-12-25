@@ -3,6 +3,8 @@ import { Hono } from 'hono';
 import { jsx } from 'hono/jsx'; // Seems to be required even though it's unused
 
 import { instrument, ResolveConfigFn } from '@microlabs/otel-cf-workers';
+import { trace, SpanStatusCode } from '@opentelemetry/api';
+
 import { createServiceRegistry as createServiceRegistryInternal } from './services/serviceRegistry';
 import { createAnimeIdentityService } from './services/animeIdentity';
 import { createDatabaseAdapter } from './dependencies/database/database';
@@ -50,7 +52,18 @@ app.get('/anime/random', async (c) => {
 });
 
 app.get('/anime/:animeInternalId', async (c) => {
-	const animeInternalId = await createValidationAdapter().buildValidator(z.coerce.number()).validate(c.req.param('animeInternalId'));
+	let animeInternalId;
+	try {
+		animeInternalId = await createValidationAdapter().buildValidator(z.coerce.number()).validate(c.req.param('animeInternalId'));
+	} catch (error) {
+		const span = trace.getActiveSpan();
+		if (span) {
+			span.recordException(error as Error);
+			span.setStatus({ code: SpanStatusCode.ERROR });
+		}
+		c.status(400);
+		return c.text("Bad Request");
+	}
 
 	const res = await createServiceRegistry({ env: c.env }).getAnimeIdentityService().getAnimeCoreDetails({ animeInternalId });
 
