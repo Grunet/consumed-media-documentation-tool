@@ -236,26 +236,27 @@ async function checkIfAnilistIdIsValid(
 				return createInternalResponse(response.status, response.statusText, span);
 			}
 
-			const schema = z.object({
-				data: z
-					.object({
-						Media: z.object({
-							id: z.number(),
-						}),
-					})
-					.optional(),
-				errors: z
-					.array(
-						z.object({
-							status: z.number(),
-						}),
-					)
-					.optional(),
-			});
-			const { validate } = validationAdapter.buildValidator(schema);
-
 			const untypedResponseBody = await response.json();
-			const responseBody = await validate(untypedResponseBody);
+			const responseBody = await validationAdapter
+				.buildValidator(
+					z.object({
+						data: z
+							.object({
+								Media: z.object({
+									id: z.number(),
+								}),
+							})
+							.optional(),
+						errors: z
+							.array(
+								z.object({
+									status: z.number(),
+								}),
+							)
+							.optional(),
+					}),
+				)
+				.validate(untypedResponseBody);
 
 			span.setAttribute('custom.http.response.body', JSON.stringify(responseBody));
 
@@ -362,35 +363,36 @@ async function getAnimeDetailsFromAnilist(
 				return createInternalResponse(response.status, response.statusText, span);
 			}
 
-			const schema = z.object({
-				data: z
-					.object({
-						Media: z.object({
-							id: z.number(),
-							title: z.object({
-								english: z.string(),
-								userPreferred: z.string(),
-								romaji: z.string(),
-								native: z.string(),
-							}),
-							coverImage: z.object({
-								extraLarge: z.string(),
-							}),
-						}),
-					})
-					.optional(),
-				errors: z
-					.array(
-						z.object({
-							status: z.number(),
-						}),
-					)
-					.optional(),
-			});
-			const { validate } = validationAdapter.buildValidator(schema);
-
 			const untypedResponseBody = await response.json();
-			const responseBody = await validate(untypedResponseBody);
+			const responseBody = await validationAdapter
+				.buildValidator(
+					z.object({
+						data: z
+							.object({
+								Media: z.object({
+									id: z.number(),
+									title: z.object({
+										english: z.string(),
+										userPreferred: z.string(),
+										romaji: z.string(),
+										native: z.string(),
+									}),
+									coverImage: z.object({
+										extraLarge: z.string(),
+									}),
+								}),
+							})
+							.optional(),
+						errors: z
+							.array(
+								z.object({
+									status: z.number(),
+								}),
+							)
+							.optional(),
+					}),
+				)
+				.validate(untypedResponseBody);
 
 			span.setAttribute('custom.http.response.body', JSON.stringify(responseBody));
 
