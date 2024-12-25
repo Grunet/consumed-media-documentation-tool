@@ -1,4 +1,5 @@
 import { IDatabaseAdapter } from '../../dependencies/database/database';
+import { IValidationAdapter, z } from '../../dependencies/validation/validation';
 import { trace, Span, SpanStatusCode, Tracer } from '@opentelemetry/api';
 import { ATTR_HTTP_RESPONSE_STATUS_CODE } from '@opentelemetry/semantic-conventions';
 
@@ -9,9 +10,11 @@ interface IAnimeIdentityService {
 
 function createAnimeIdentityService({
 	dbAdapter,
+	validationAdapter,
 	anilistApiUrl,
 }: {
 	dbAdapter: IDatabaseAdapter;
+	validationAdapter: IValidationAdapter;
 	anilistApiUrl: string;
 }): IAnimeIdentityService {
 	const tracer = trace.getTracer('anime-identity', '0.0.1');
@@ -95,7 +98,7 @@ function createAnimeIdentityService({
 						return createResponse(404, { errorMessage: `No matching anilist id found for anime internal id of ${animeInternalId}` }, span);
 					}
 
-					const { status, data } = await getAnimeDetailsFromAnilist({ anilistApiUrl, anilistId }, tracer);
+					const { status, data } = await getAnimeDetailsFromAnilist({ validationAdapter, anilistApiUrl, anilistId }, tracer);
 					if (status != 200) {
 						if (status === 404) {
 							return createResponse(404, { errorMessage: `Not Found` }, span);
@@ -276,9 +279,11 @@ async function checkIfAnilistIdIsValid(
 
 async function getAnimeDetailsFromAnilist(
 	{
+		validationAdapter,
 		anilistApiUrl,
 		anilistId,
 	}: {
+		validationAdapter: IValidationAdapter;
 		anilistApiUrl: string;
 		anilistId: number;
 	},
@@ -336,16 +341,35 @@ async function getAnimeDetailsFromAnilist(
 				return createInternalResponse(response.status, response.statusText, span);
 			}
 
-			const responseBody = await response.json<{
-				data: {
-					Media: {
-						id: number;
-						title: { english: string; userPreferred: string; romaji: string; native: string };
-						coverImage: { extraLarge: string };
-					};
-				};
-				errors: [{ status: number }];
-			}>();
+			const schema = z.object({
+				data: z
+					.object({
+						Media: z.object({
+							id: z.number(),
+							title: z.object({
+								english: z.string(),
+								userPreferred: z.string(),
+								romaji: z.string(),
+								native: z.string(),
+							}),
+							coverImage: z.object({
+								extraLarge: z.string(),
+							}),
+						}),
+					})
+					.optional(),
+				errors: z
+					.array(
+						z.object({
+							status: z.number(),
+						}),
+					)
+					.optional(),
+			});
+			const { validate } = validationAdapter.buildValidator(schema, (data) => Promise.resolve(data));
+
+			const untypedResponseBody = await response.json();
+			const responseBody = await validate(untypedResponseBody);
 
 			span.setAttribute('custom.http.response.body', JSON.stringify(responseBody));
 

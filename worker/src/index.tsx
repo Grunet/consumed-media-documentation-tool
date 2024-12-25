@@ -6,6 +6,7 @@ import { instrument, ResolveConfigFn } from '@microlabs/otel-cf-workers';
 import { createServiceRegistry as createServiceRegistryInternal } from './services/serviceRegistry';
 import { createAnimeIdentityService } from './services/animeIdentity';
 import { createDatabaseAdapter } from './dependencies/database/database';
+import { createValidationAdapter } from './dependencies/validation/validation';
 
 type Env = { Bindings: Bindings };
 const app = new Hono<Env>();
@@ -21,8 +22,9 @@ function createServiceRegistry({ env }: { env: Bindings }) {
 // Exposed for tests
 export function _createAnimeIdentityService({ env }: { env: Bindings }) {
 	const dbAdapter = createDatabaseAdapter({ env });
+	const validationAdapter = createValidationAdapter();
 
-	return createAnimeIdentityService({ dbAdapter, anilistApiUrl: env.ANILIST_API_URL });
+	return createAnimeIdentityService({ dbAdapter, validationAdapter, anilistApiUrl: env.ANILIST_API_URL });
 }
 
 app.get('/', (c) => c.text('Hello Cloudflare Workers!'));
