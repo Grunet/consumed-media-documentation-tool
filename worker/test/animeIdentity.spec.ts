@@ -1,6 +1,6 @@
 import { env, fetchMock } from 'cloudflare:test';
 import { describe, expect, it, beforeAll } from 'vitest';
-import { _createAnimeIdentityService } from '../src';
+import { createServices } from '../src';
 import { Bindings } from '../src/types/bindings';
 
 describe('Getting Anime internal id from Anilist id', () => {
@@ -12,7 +12,7 @@ describe('Getting Anime internal id from Anilist id', () => {
 	});
 
 	it('Generates a new internal id and returns it on the second asking', async () => {
-		const service = _createAnimeIdentityService({ env: env as Bindings });
+		const service = createServices({ env: env as Bindings }).getAnimeIdentityService();
 
 		const anilistId = 12345;
 
