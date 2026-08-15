@@ -1,6 +1,9 @@
-import { IDatabaseAdapter } from '../../dependencies/database/database';
 import { trace, Span, SpanStatusCode, Tracer } from '@opentelemetry/api';
 import { ATTR_HTTP_RESPONSE_STATUS_CODE } from '@opentelemetry/semantic-conventions';
+
+interface IDatabaseAdapter {
+	run(query: string, ...values: unknown[]): Promise<Record<string, unknown>[]>;
+}
 
 interface IAnimeIdentityService {
 	getAnimeInternalIdFromAnilistId({ anilistId }: { anilistId: number }): Promise<Response>;
