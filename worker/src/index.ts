@@ -13,8 +13,10 @@ export function createServices({ env }: { env: Bindings }) {
 	const animeIdentityService = createAnimeIdentityService({ dbAdapter, anilistApiUrl: env.ANILIST_API_URL });
 
 	return {
-		getAnimeIdentityService() { return animeIdentityService; }
-	}
+		getAnimeIdentityService() {
+			return animeIdentityService;
+		},
+	};
 }
 
 app.get('/', (c) => c.text('Hello Cloudflare Workers!'));
