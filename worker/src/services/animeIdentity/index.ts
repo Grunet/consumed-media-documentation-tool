@@ -7,6 +7,7 @@ interface IDatabaseAdapter {
 
 interface IAnimeIdentityService {
 	getAnimeInternalIdFromAnilistId({ anilistId }: { anilistId: number }): Promise<Response>;
+	getAnilistIdFromAnimeInternalId({ animeInternalId }: { animeInternalId: number }): Promise<Response>;
 }
 
 function createAnimeIdentityService({
@@ -79,10 +80,47 @@ function createAnimeIdentityService({
 				}
 			});
 		},
+		async getAnilistIdFromAnimeInternalId({ animeInternalId }) {
+			return tracer.startActiveSpan('getAnilistIdFromAnimeInternalId', async (span: Span) => {
+				try {
+					span.setAttribute('custom.anime.animeInternalId', animeInternalId);
+
+					if (!Number.isInteger(animeInternalId) || animeInternalId <= 0) {
+						return createResponse(
+							400,
+							{ errorMessage: `Anime internal id of ${animeInternalId} is either not an integer or is not positive` },
+							span,
+						);
+					}
+
+					const { anilistId } = await getAnilistIdFromAnimeInternalIdHelper({ dbAdapter, animeInternalId });
+					if (anilistId) {
+						return createResponse(
+							200,
+							{
+								data: {
+									anilistId,
+								},
+							},
+							span,
+						);
+					}
+
+					return createResponse(404, { errorMessage: `Anime internal id of ${animeInternalId} not found` }, span);
+				} catch (error) {
+					span.recordException(error as Error);
+					span.setStatus({ code: SpanStatusCode.ERROR });
+
+					return createResponse(500, { errorMessage: `Internal Server Error` }, span);
+				}
+			});
+		},
 	};
 }
 
-function createResponse(status: number, body: { errorMessage: string } | { data: { animeInternalId: number } }, span: Span) {
+type JSONValue = string | number | boolean | null | { [x: string]: JSONValue } | JSONValue[];
+
+function createResponse(status: number, body: { errorMessage: string } | { data: JSONValue }, span: Span) {
 	const stringifiedBody = JSON.stringify(body);
 
 	span.setAttribute(ATTR_HTTP_RESPONSE_STATUS_CODE, status);
@@ -104,6 +142,25 @@ async function getInternalIdFromAnilistId({ dbAdapter, anilistId }: { dbAdapter:
 	} else {
 		return {
 			animeInternalId: undefined,
+		};
+	}
+}
+
+async function getAnilistIdFromAnimeInternalIdHelper({
+	dbAdapter,
+	animeInternalId,
+}: {
+	dbAdapter: IDatabaseAdapter;
+	animeInternalId: number;
+}) {
+	const res = await dbAdapter.run('SELECT AnilistId FROM AnimeIdentity_Anime WHERE InternalId = ?', animeInternalId);
+	if (res.length > 0 && typeof res[0]['AnilistId'] === 'number') {
+		return {
+			anilistId: res[0]['AnilistId'],
+		};
+	} else {
+		return {
+			anilistId: undefined,
 		};
 	}
 }

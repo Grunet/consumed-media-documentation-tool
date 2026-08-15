@@ -11,7 +11,7 @@ describe('Getting Anime internal id from Anilist id', () => {
 		fetchMock.disableNetConnect();
 	});
 
-	it('Generates a new internal id and returns it on the second asking', async () => {
+	it('Generates a new internal id, returns it on the second asking, and returns the anilist id back', async () => {
 		const service = createServices({ env: env as Bindings }).getAnimeIdentityService();
 
 		const anilistId = 12345;
@@ -48,5 +48,12 @@ describe('Getting Anime internal id from Anilist id', () => {
 		const sameInternalId = ((await secondRes.json()) as any).data.animeInternalId;
 
 		expect(internalId).toEqual(sameInternalId);
+
+		const thirdRes = await service.getAnilistIdFromAnimeInternalId({ animeInternalId: internalId });
+		expect(thirdRes.status).to.equal(200);
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const sameAnilistId = ((await thirdRes.json()) as any).data.anilistId;
+
+		expect(anilistId).toEqual(sameAnilistId);
 	});
 });
