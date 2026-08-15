@@ -1,26 +1,22 @@
 import { Bindings } from './types/bindings';
 import { Hono } from 'hono';
 import { instrument, ResolveConfigFn } from '@microlabs/otel-cf-workers';
-import { createServiceRegistry as createServiceRegistryInternal } from './services/serviceRegistry';
 import { createAnimeIdentityService } from './services/animeIdentity';
 import { createDatabaseAdapter } from './dependencies/database/database';
 
 type Env = { Bindings: Bindings };
 const app = new Hono<Env>();
 
-function createServiceRegistry({ env }: { env: Bindings }) {
-	return createServiceRegistryInternal({
-		services: {
-			animeIdentityService: _createAnimeIdentityService({ env }),
-		},
-	});
-}
-
-// Exposed for tests
-export function _createAnimeIdentityService({ env }: { env: Bindings }) {
+export function createServices({ env }: { env: Bindings }) {
 	const dbAdapter = createDatabaseAdapter({ env });
 
-	return createAnimeIdentityService({ dbAdapter, anilistApiUrl: env.ANILIST_API_URL });
+	const animeIdentityService = createAnimeIdentityService({ dbAdapter, anilistApiUrl: env.ANILIST_API_URL });
+
+	return {
+		getAnimeIdentityService() {
+			return animeIdentityService;
+		},
+	};
 }
 
 app.get('/', (c) => c.text('Hello Cloudflare Workers!'));
@@ -29,7 +25,7 @@ app.get('/anime/random', async (c) => {
 	//TODO - actually implement this
 	const randomAnilistId = 170942;
 
-	const res = await createServiceRegistry({ env: c.env })
+	const res = await createServices({ env: c.env })
 		.getAnimeIdentityService()
 		.getAnimeInternalIdFromAnilistId({ anilistId: randomAnilistId });
 
